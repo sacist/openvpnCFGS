@@ -1,0 +1,33 @@
+
+services:
+  vpn-app:
+    build: .
+    container_name: vpn-app
+    cap_add:
+      - NET_ADMIN   # нужно, чтобы OpenVPN мог менять сетевые интерфейсы
+    devices:
+      - /dev/net/tun  # доступ к VPN-интерфейсу
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    restart: no
+    volumes:
+      - ./cfg:/cfg
+    networks:
+      - vpnnet
+
+  mongo:
+      image: mongo:7.0
+      container_name: mongo
+      restart: unless-stopped
+      networks:
+        - vpnnet
+      volumes:
+        - mongo-data:/data/db
+
+volumes:
+  mongo-data:
+
+networks:
+  vpnnet:
+    driver: bridge

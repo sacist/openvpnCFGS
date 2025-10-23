@@ -1,0 +1,26 @@
+{
+  "name": "openvpntry",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "parse": "ts-node src/parse-cfgs.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "keywords": [],
+  "description": "",
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "dotenv": "^17.2.3",
+    "mongoose": "^8.19.2",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/mongoose": "^5.11.97",
+    "@types/node": "^24.9.1",
+    "typescript": "^5.9.3"
+  }
+}
