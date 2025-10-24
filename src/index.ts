@@ -2,72 +2,60 @@ import path from "path"
 import fs from "fs"
 import { Cfg } from './models/ovpn-cfg.model'
 import 'dotenv/config'
-import mongoose from "mongoose"
-import { spawn } from "child_process"
-
+import { connectDB } from "./helpers"
+import { spawn, execSync } from "child_process"
+import dns from "dns";
 const CFG_DIR = path.resolve("./cfg")
-const MONGO_URI = process.env.MONGO_URI
+const openvpn_path = "C:\\Program Files\\OpenVPN\\bin\\openvpn.exe"
 
-const connectDB = async () => {
+
+dns.setServers(["8.8.8.8", "1.1.1.1"])
+function killVpnWin(proc: any) {
     try {
-        if (!MONGO_URI) throw new Error('no mongo_uri in env')
-        await mongoose.connect(MONGO_URI)
-        console.log("✅ Connected to MongoDB")
-    } catch (err) {
-        console.error("❌ Failed to connect to MongoDB:", err)
-        process.exit(1)
-    }
+        execSync(`taskkill /PID ${proc.pid} /F`)
+    } catch { }
 }
 
 export const connectToVpn = async (task: () => Promise<any>) => {
     await connectDB()
 
-    const configs = fs.readdirSync(CFG_DIR).filter(f => f.endsWith(".ovpn"))
-    for (const cfg of configs) {
-        try {
-            await Cfg.create({ cfg_name: cfg })
-        } catch (e: any) {
-            if (e.code !== 11000) throw e
-        }
-    }
-
     const tryConnect = async (): Promise<void> => {
-        const configToUse = await Cfg.findOne({ times_used: { $lt: 6 } })
+        const configToUse = await Cfg.findOne({ times_used: { $lt: 6 }, active: true })
         if (!configToUse) throw new Error('Нет доступных конфигов')
 
         const configPath = path.join(CFG_DIR, configToUse.cfg_name)
-        const vpnProcess = spawn("openvpn", [
+        const vpnProcess = spawn(openvpn_path, [
             "--config", configPath,
-            "--data-ciphers", "AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-128-CBC"
-        ])
-
+            "--data-ciphers", "AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-128-CBC",
+        ], { shell: false })
         return new Promise<void>((resolve, reject) => {
             let connected = false
             let outputBuffer = ""
             const timeout = setTimeout(() => {
                 if (!connected) {
-                    vpnProcess.kill("SIGINT")
+                    killVpnWin(vpnProcess)
                     reject(new Error("Таймаут подключения VPN"))
                 }
-            }, 20000)
+            }, 15000)
 
             vpnProcess.stdout.on("data", async (data) => {
                 outputBuffer += data.toString()
                 process.stdout.write(`Vpn: ${data.toString()}`)
 
                 if (!connected && outputBuffer.includes("Initialization Sequence Completed")) {
+                    console.log('Впн Подключен')
                     connected = true
                     clearTimeout(timeout)
+
                     try {
                         await task()
                         await configToUse.updateOne({ times_used: configToUse.times_used + 1 })
                         resolve()
                     } catch (e) {
                         console.error(e)
-                        vpnProcess.kill()
                         reject(e)
                     } finally {
-                        vpnProcess.kill()
+                        killVpnWin(vpnProcess)
                     }
                 }
             })
@@ -83,8 +71,7 @@ export const connectToVpn = async (task: () => Promise<any>) => {
                 }
             })
         }).catch(async (err) => {
-            await Cfg.deleteOne({ _id: configToUse._id })
-            try { fs.unlinkSync(configPath) } catch { }
+            await Cfg.updateOne({ _id: configToUse._id }, { active: false })
             await new Promise(r => setTimeout(r, 1000))
             return tryConnect()
         })
@@ -94,9 +81,8 @@ export const connectToVpn = async (task: () => Promise<any>) => {
 }
 
 const fetchIp = async () => {
-    const res = await fetch("https://api.ipify.org?format=json", { signal: AbortSignal.timeout(20000) })
-    const json = await res.json()
-    console.log(json.ip)
+    const res = await fetch("https://www.drom.ru/")
+    console.log('Фетч удался')
 }
 
 (async () => {

@@ -4,7 +4,8 @@ import { Document,Schema, model } from "mongoose";
 
 export interface ICfg extends Document {
     cfg_name:string,
-    times_used:number 
+    times_used:number,
+    active:boolean 
 }
 
 const CfgSchema = new Schema<ICfg>({
@@ -16,6 +17,10 @@ const CfgSchema = new Schema<ICfg>({
     times_used:{
         type:Number,
         default:0
+    },
+    active:{
+        type:Boolean,
+        default:true
     }
 }
 )

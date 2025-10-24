@@ -1,10 +1,11 @@
 import fs from "fs";
 import path from "path";
 import { Cfg } from "./models/ovpn-cfg.model";
+import { connectDB } from "./helpers";
 
 const SAVE_DIR = path.resolve(__dirname, "../cfg");
-
 async function main() {
+    await connectDB()
     const res = await fetch("https://www.vpngate.net/api/iphone/");
     const text = await res.text();
 
@@ -54,16 +55,41 @@ async function main() {
     console.log(`✅ Найдено ${unique.length} серверов (TCP + UDP, без России)`);
 
     if (!fs.existsSync(SAVE_DIR)) fs.mkdirSync(SAVE_DIR, { recursive: true });
-
+    let newCfgsCount=0
     for (const { ip, port, config } of unique) {
         const proto = config.includes("proto tcp") ? "tcp" : config.includes("proto udp") ? "udp" : "unknown"
         const cfg=`vpngate_${ip}_${proto}_${port}.ovpn`
         const filePath = path.join(SAVE_DIR, cfg)
-        //fs.writeFileSync(filePath, config, "utf8")
-
+        try {
+            await Cfg.create({cfg_name:cfg})
+            fs.writeFileSync(filePath, config, "utf8")
+            newCfgsCount++
+        } catch (e:any) {
+            if (e.code !== 11000) throw e
+        }
     }
-
-    console.log("💾 Конфиги сохранены в:", SAVE_DIR);
+    const inactiveCfgsJson=await Cfg.find({active:false})
+    let deletedCfgsCount=0
+    if(inactiveCfgsJson.length!==0){
+        const inactiveCfgs=inactiveCfgsJson.map((val)=>val.cfg_name)
+        const configs = fs.readdirSync(SAVE_DIR).filter(f => f.endsWith(".ovpn"))
+        for(const cfg of configs){
+            if(inactiveCfgs.includes(cfg)){
+                try {
+                    fs.unlinkSync(path.join(SAVE_DIR, cfg))
+                    deletedCfgsCount++
+                } catch (e) {
+                    console.log('Ошибка удаления конфига')   
+                }
+            }
+        }
+    }
+    console.log(`${newCfgsCount} Новых конфигов сохранено в:`, SAVE_DIR)
+    console.log(`${deletedCfgsCount} Неактивных конфигов удалено в:`, SAVE_DIR)
+    process.exit(1)
 }
 
-main().catch(console.error);
+main().catch((e)=>{
+    console.log(e)
+    process.exit(0)
+});
