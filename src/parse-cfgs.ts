@@ -33,15 +33,16 @@ async function main() {
             message,
             openVPNConfigBase64,
         ] = cols;
-
+        console.log(speed);
+        
         if (!openVPNConfigBase64 || !ip) continue;
         if (countryLong.includes("Russia")) continue
-
+        const speedNum = Number(speed)
         const decoded = Buffer.from(openVPNConfigBase64, "base64").toString("utf8");
 
         const portMatch = decoded.match(/remote\s+[^\s]+\s+(\d+)/);
         const port = portMatch ? portMatch[1] : "unknown";
-
+        if (isNaN(speedNum) || speedNum < 365000000) continue;
         servers.push({ ip, port, config: decoded });
     }
 

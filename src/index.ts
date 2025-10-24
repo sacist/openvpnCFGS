@@ -4,12 +4,9 @@ import { Cfg } from './models/ovpn-cfg.model'
 import 'dotenv/config'
 import { connectDB } from "./helpers"
 import { spawn, execSync } from "child_process"
-import dns from "dns";
 const CFG_DIR = path.resolve("./cfg")
 const openvpn_path = "C:\\Program Files\\OpenVPN\\bin\\openvpn.exe"
-
-
-dns.setServers(["8.8.8.8", "1.1.1.1"])
+import { Agent,fetch } from "undici"
 function killVpnWin(proc: any) {
     try {
         execSync(`taskkill /PID ${proc.pid} /F`)
@@ -26,7 +23,10 @@ export const connectToVpn = async (task: () => Promise<any>) => {
         const configPath = path.join(CFG_DIR, configToUse.cfg_name)
         const vpnProcess = spawn(openvpn_path, [
             "--config", configPath,
-            "--data-ciphers", "AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-128-CBC",
+            "--data-ciphers", "AES-256-GCM:AES-128-GCM:AES-128-CBC",
+            "--redirect-gateway", "def1",
+            "--dhcp-option", "DNS", "8.8.8.8",
+            "--dhcp-option", "DNS", "1.1.1.1"
         ], { shell: false })
         return new Promise<void>((resolve, reject) => {
             let connected = false
@@ -81,7 +81,9 @@ export const connectToVpn = async (task: () => Promise<any>) => {
 }
 
 const fetchIp = async () => {
-    const res = await fetch("https://www.drom.ru/")
+    const res = await fetch("https://api.ipify.org",{
+        dispatcher:new Agent({connectTimeout:60000})
+    })
     console.log('Фетч удался')
 }
 
