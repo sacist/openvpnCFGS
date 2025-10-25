@@ -6,9 +6,11 @@ import { connectDB } from "./helpers";
 const SAVE_DIR = path.resolve(__dirname, "../cfg");
 async function main() {
     await connectDB()
-    const res = await fetch("https://www.vpngate.net/api/iphone/");
+    const res = await fetch("http://flareproxy_server:1200?url=https://www.vpngate.net/api/iphone/&code=IF1Qxd5AZvCc",{
+        method:"POST"
+    })
+    
     const text = await res.text();
-
     const lines = text.split("\n").slice(2)
     const servers = [];
 
@@ -42,7 +44,7 @@ async function main() {
 
         const portMatch = decoded.match(/remote\s+[^\s]+\s+(\d+)/);
         const port = portMatch ? portMatch[1] : "unknown";
-        if (isNaN(speedNum) || speedNum < 365000000) continue;
+        // if (isNaN(speedNum) || speedNum < 175000000) continue;
         servers.push({ ip, port, config: decoded });
     }
 
@@ -87,7 +89,7 @@ async function main() {
     }
     console.log(`${newCfgsCount} Новых конфигов сохранено в:`, SAVE_DIR)
     console.log(`${deletedCfgsCount} Неактивных конфигов удалено в:`, SAVE_DIR)
-    process.exit(1)
+    process.exit(0)
 }
 
 main().catch((e)=>{

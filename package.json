@@ -6,7 +6,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "parse": "ts-node src/parse-cfgs.ts"
+    "parse": "ts-node src/parse-cfgs.ts",
+    "linux": "ts-node src/index-linux.ts"
   },
   "author": "",
   "license": "ISC",

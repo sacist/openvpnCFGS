@@ -1,12 +1,11 @@
-
 services:
   vpn-app:
     build: .
     container_name: vpn-app
     cap_add:
-      - NET_ADMIN   # нужно, чтобы OpenVPN мог менять сетевые интерфейсы
+      - NET_ADMIN
     devices:
-      - /dev/net/tun  # доступ к VPN-интерфейсу
+      - /dev/net/tun
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -15,15 +14,19 @@ services:
       - ./cfg:/cfg
     networks:
       - vpnnet
+      - app-network
+      - flareproxyserver_app-network
 
   mongo:
-      image: mongo:7.0
-      container_name: mongo
-      restart: unless-stopped
-      networks:
-        - vpnnet
-      volumes:
-        - mongo-data:/data/db
+    image: mongo:7.0
+    container_name: mongo
+    restart: unless-stopped
+    networks:
+      - vpnnet
+    volumes:
+      - mongo-data:/data/db
+    logging:
+      driver: "none"
 
 volumes:
   mongo-data:
@@ -31,3 +34,7 @@ volumes:
 networks:
   vpnnet:
     driver: bridge
+  app-network:
+    driver: bridge
+  flareproxyserver_app-network:
+    external: true

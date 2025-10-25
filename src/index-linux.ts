@@ -4,15 +4,16 @@ import 'dotenv/config'
 import { connectDB } from "./helpers"
 import { spawn} from "child_process"
 const CFG_DIR = path.resolve("./cfg")
-const openvpn_path = "C:\\Program Files\\OpenVPN\\bin\\openvpn.exe"
 import { Agent, fetch } from "undici"
 
 export const connectToVpn = async (task: () => Promise<any>) => {
-    await connectDB()
-
     const tryConnect = async (): Promise<void> => {
         const configToUse = await Cfg.findOne({ times_used: { $lt: 6 }, active: true })
-        if (!configToUse) throw new Error('Нет доступных конфигов')
+        if (!configToUse){
+            console.log("Нет доступных конфигов")
+            process.exit(0)
+        }
+        
 
         const configPath = path.join(CFG_DIR, configToUse.cfg_name)
         const vpnProcess = spawn("openvpn", [
@@ -29,11 +30,11 @@ export const connectToVpn = async (task: () => Promise<any>) => {
                     vpnProcess.kill("SIGINT")
                     reject(new Error("Таймаут подключения VPN"))
                 }
-            }, 165000)
+            }, 20000)
 
             vpnProcess.stdout.on("data", async (data) => {
                 outputBuffer += data.toString()
-                process.stdout.write(`Vpn: ${data.toString()}`)
+                // process.stdout.write(`Vpn: ${data.toString()}`)
 
                 if (!connected && outputBuffer.includes("Initialization Sequence Completed")) {
                     console.log('Впн Подключен')
@@ -65,6 +66,7 @@ export const connectToVpn = async (task: () => Promise<any>) => {
             })
         }).catch(async (err) => {
             await Cfg.updateOne({ _id: configToUse._id }, { active: false })
+            console.log("Конфиг не рабочий")
             await new Promise(r => setTimeout(r, 1000))
             return tryConnect()
         })
@@ -77,11 +79,14 @@ const fetchIp = async () => {
     const res = await fetch("https://api.ipify.org", {
         dispatcher: new Agent({ connectTimeout: 60000 })
     })
-    console.log('Фетч удался')
+    const resText=await res.text()
+    console.log(resText)
 }
 
 (async () => {
-    for (let i = 0; i < 10; i++) {
+    await connectDB()
+    for (let i = 0; i < 50; i++) {
         await connectToVpn(fetchIp)
+        console.log(i+1,' Тасков завершено')
     }
 })()
