@@ -11,7 +11,7 @@ services:
       - 1.1.1.1
     restart: no
     volumes:
-      - ./cfg:/cfg
+      - cfg-data:/cfg
     networks:
       - vpnnet
       - app-network
@@ -30,6 +30,7 @@ services:
 
 volumes:
   mongo-data:
+  cfg-data:
 
 networks:
   vpnnet:
