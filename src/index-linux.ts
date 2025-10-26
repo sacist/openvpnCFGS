@@ -3,7 +3,7 @@ import { Cfg } from './models/ovpn-cfg.model'
 import 'dotenv/config'
 import { connectDB } from "./helpers"
 import { spawn} from "child_process"
-const CFG_DIR = path.resolve("./cfg")
+const CFG_DIR = path.resolve("/cfg")
 import { Agent, fetch } from "undici"
 
 export const connectToVpn = async (task: () => Promise<any>) => {
@@ -30,11 +30,11 @@ export const connectToVpn = async (task: () => Promise<any>) => {
                     vpnProcess.kill("SIGINT")
                     reject(new Error("Таймаут подключения VPN"))
                 }
-            }, 20000)
+            }, 10000)
 
             vpnProcess.stdout.on("data", async (data) => {
                 outputBuffer += data.toString()
-                // process.stdout.write(`Vpn: ${data.toString()}`)
+                //process.stdout.write(`Vpn: ${data.toString()}`)
 
                 if (!connected && outputBuffer.includes("Initialization Sequence Completed")) {
                     console.log('Впн Подключен')
@@ -66,7 +66,7 @@ export const connectToVpn = async (task: () => Promise<any>) => {
             })
         }).catch(async (err) => {
             await Cfg.updateOne({ _id: configToUse._id }, { active: false })
-            console.log("Конфиг не рабочий")
+            console.log("Конфиг не рабочий",err)
             await new Promise(r => setTimeout(r, 1000))
             return tryConnect()
         })

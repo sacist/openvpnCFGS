@@ -3,7 +3,7 @@ import path from "path";
 import { Cfg } from "./models/ovpn-cfg.model";
 import { connectDB } from "./helpers";
 
-const SAVE_DIR = path.resolve(__dirname, "../cfg");
+const SAVE_DIR = path.resolve("/cfg");
 async function main() {
     await connectDB()
     const res = await fetch("http://flareproxy_server:1200?url=https://www.vpngate.net/api/iphone/&code=IF1Qxd5AZvCc",{
